@@ -222,7 +222,7 @@ let moveInterval = 5; // adjust this value to control the frequency
 Monster.prototype.draw = function () {
   // If the monster is dead, draw the icon image
   if (this.isDead) {
-    ctx.drawImage(this.iconImage, this.x, this.y, this.frameWidth, this.frameHeight);
+    ctx.drawImage(this.iconImage, this.x, this.y, this.iconImage.width / 4, this.iconImage.height / 4);
   } else {
     // Otherwise, draw the monster image
     ctx.drawImage(this.image,
