@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>4-Directional Character Game</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+    }
+
+    .no-drag-select {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+
+    .no-drag-select::selection {
+      background: transparent;
+    }
+
+    #game-container {
+      width: 1920px;
+      height: 1080px;
+
+    }
+
+    #game-canvas {
+      width: 100%;
+      height: 100%;
+      background: url(map.png);
+    }
+ 
+  </style>
+</head>
+
+<body>
+  <div id="game-container">
+    <canvas id="game-canvas" width="1920" height="1080"></canvas>
+  </div>
+  </div>
+
+  <script>
+
+
+    // Cache character images and their sizes
+    let characterImages = {};
+    let imageUrls = [
+      'character.png',
+      'dance_character.png',
+      'hit_character.png',
+      'run_character.png',
+      'jump_character.png',
+      'attack-character.png'
+    ];
+
+    for (let i = 0; i < imageUrls.length; i++) {
+      let img = new Image();
+      img.src = imageUrls[i];
+      characterImages[imageUrls[i]] = {
+        image: img,
+        width: img.width,
+        height: img.height
+      };
+    }
+
+    // Preload audio files
+    let audioFiles = [
+      'dance_sound.mp3',
+      'hit_sound.mp3',
+      'run_sound.wav',
+      'jump_sound.mp3',
+      'attack_sound.mp3',
+      'pick_up_sound.wav'
+    ];
+
+    let audioCache = {};
+
+
+
+    for (let i = 0; i < audioFiles.length; i++) {
+      let audio = new Audio(audioFiles[i]);
+      audioCache[audioFiles[i]] = audio;
+    }
+
+
+    // Play a sound effect
+    function playSound(soundFile) {
+      if (audioCache[soundFile]) {
+        audioCache[soundFile].play();
+      } else {
+        console.error(`Sound file not found: ${soundFile}`);
+      }
+    }
+
+
+    let canvas = document.getElementById('game-canvas');
+    let ctx = canvas.getContext('2d');
+
+    // Load the character sprite sheet
+    let characterImage = new Image();
+    characterImage.src = 'character.png';
+    characterImage.onload = function () {
+      // Initialize the game state
+      let characterWidth = characterImage.width; // Get the actual image width
+      let characterHeight = characterImage.height; // Get the actual image height
+      let characterFrames = 16; // Number of frames (16 directions)
+      let frameWidth = characterWidth / 4; // Width of each frame
+      let frameHeight = characterHeight / 4; // Height of each frame
+      let characterX = canvas.width / 2; // Initial x position
+      let characterY = canvas.height / 2; // Initial y position
+      let frameIndex = 0; // Current frame index
+      let direction = 0; // Current direction (0-3)
+      let speed = 5; // Movement speed
+      let score = 0; // Initialize score
+      let level = 1; // Initialize level
+
+      document.addEventListener('keydown', (event) => {
+  switch (event.key) {
+    case 'z':
+      // Dance action
+      setTimeout(() => {
+        changeCharacterImage('dance_character.png', 'dance_sound.mp3');
+      }, 2000); // 200ms delay
+      break;
+    case 'x':
+      // Hit action
+      setTimeout(() => {
+        changeCharacterImage('hit_character.png', 'hit_sound.mp3');
+      }, 2000); // 200ms delay
+      break;
+    case 'c':
+      // Run action
+      setTimeout(() => {
+        changeCharacterImage('run_character.png', 'run_sound.wav');
+      }, 2000); // 200ms delay
+      break;
+    case 'v':
+      // Jump action
+      setTimeout(() => {
+        changeCharacterImage('jump_character.png', 'jump_sound.mp3');
+      }, 2000); // 200ms delay
+      break;
+    case 'b':
+      // Attack action
+      setTimeout(() => {
+        changeCharacterImage('attack-character.png', 'attack_sound.mp3');
+      }, 2000); // 200ms delay
+      break;
+    case 'n':
+      // Pick-up action
+      setTimeout(() => {
+        changeCharacterImage('character.png', 'pick_up_sound.wav');
+      }, 2000); // 200ms delay
+      break;
+    case 'ArrowUp':
+      direction = 3; // Up
+      handleMove(characterX, characterY);
+      break;
+    case 'ArrowDown':
+      direction = 0; // Down
+      handleMove(characterX, characterY);
+      break;
+    case 'ArrowLeft':
+      direction = 1; // Left
+      handleMove(characterX, characterY);
+      break;
+    case 'ArrowRight':
+      direction = 2; // Right
+      handleMove(characterX, characterY);
+      break;
+  }
+});
+      function changeCharacterImage(imageName, soundFile) {
+        playSound(soundFile);
+        const image = characterImages[imageName];
+
+        const newImage = new Image();
+        newImage.src = image.image.src;
+        newImage.onload = function () {
+          characterImage = newImage;
+          characterWidth = newImage.width;
+          characterHeight = newImage.height;
+          frameWidth = characterWidth / 4;
+          frameHeight = characterHeight / 4;
+        };
+      }
+
+
+
+
+      // Define the handleMove function
+      function handleMove(x, y) {
+        // Update the character position
+        switch (direction) {
+          case 0: // Down
+            characterY += speed;
+            break;
+          case 1: // Left
+            characterX -= speed;
+            break;
+          case 2: // Right
+            characterX += speed;
+            break;
+          case 3: // Up
+            characterY -= speed;
+            break;
+        }
+
+        // Keep the character within the canvas bounds
+        characterX = Math.max(0, Math.min(characterX, canvas.width - frameWidth));
+        characterY = Math.max(0, Math.min(characterY, canvas.height - frameHeight));
+      }
+
+      // Load the monster sprite sheet
+      let monsterImage = new Image();
+      monsterImage.src = 'mon.png';
+      monsterImage.onload = function () {
+        // Define the Monster constructor
+        function Monster(x, y, direction, speed) {
+          this.x = x;
+          this.y = y;
+          this.direction = direction;
+          this.speed = speed;
+          this.frameIndex = 0;
+          this.frameWidth = monsterImage.width / 4;
+          this.frameHeight = monsterImage.height / 4;
+          this.timer = 0; // add a timer property
+          this.changeDirectionTimer = 0; // add a timer for changing direction
+  this.health = 100; // add a health property
+  this.isBeingAttacked = false; // add a flag to track if it's being attacked
+
+}
+
+        // Add Monster properties and methods
+        Monster.prototype.update = function () {
+          // Update the monster's direction and position
+          switch (this.direction) {
+            case 0: // Down
+              this.y += this.speed;
+              break;
+            case 1: // Left
+              this.x -= this.speed;
+              break;
+            case 2: // Right
+              this.x += this.speed;
+              break;
+            case 3: // Up
+              this.y -= this.speed;
+              break;
+          }
+
+          // Keep the monster within the canvas bounds
+          this.x = Math.max(0, Math.min(this.x, canvas.width - this.frameWidth));
+          this.y = Math.max(0, Math.min(this.y, canvas.height - this.frameHeight));
+
+          // Update the timer
+          this.timer += 1 / 60; // increment the timer by 1/60th of a second
+
+          // Change direction randomly every second
+          this.changeDirectionTimer += 1 / 60; // increment the timer by 1/60th of a second
+          if (this.changeDirectionTimer >= 1) {
+            this.changeDirectionTimer = 0;
+            let randomDirection = Math.floor(Math.random() * 4);
+            this.direction = randomDirection; // set direction to 0-3
+          }
+
+          // If staying still, don't move
+          if (this.direction === -1) {
+            this.x = this.x;
+            this.y = this.y;
+          }
+          // Update the frame index
+          this.timer += 1 / 60; // increment the timer by 1/60th of a second
+          if (this.timer >= 1) {
+            this.timer = 0;
+            this.frameIndex = (this.frameIndex + 1) % 4;
+          }
+        };
+
+        Monster.prototype.draw = function () {
+          // Draw the monster
+          ctx.drawImage(monsterImage,
+            this.frameIndex * this.frameWidth,
+            this.direction * this.frameHeight,
+            this.frameWidth, this.frameHeight,
+            this.x, this.y, this.frameWidth, this.frameHeight);
+       
+  // Draw the health bar only when the monster is being attacked
+  if (this.isBeingAttacked) {
+    ctx.fillStyle = 'red';
+    ctx.fillRect(this.x, this.y - 10, this.health / 100 * this.frameWidth, 5);
+  }
+
+};
+// Update the attack function to set the isBeingAttacked flag
+function attack(monster) {
+  // Reduce the monster's health
+  monster.health -= 10;
+  monster.isBeingAttacked = true;
+
+  // Check if the monster is dead
+  if (monster.health <= 0) {
+    // Remove the monster from the array
+    monsters.splice(monsters.indexOf(monster), 1);
+
+  }
+  monster.isBeingAttacked = true;
+  setTimeout(() => {
+    monster.isBeingAttacked = false;
+  }, 500); // reset the flag after 500ms
+}
+
+
+        // Create an array of monsters
+        let monsters = [];
+
+        // Spawn 5 monsters at random positions
+        for (let i = 0; i < 59; i++) {
+          let randomX = Math.floor(Math.random() * (canvas.width - monsterImage.width / 4));
+          let randomY = Math.floor(Math.random() * (canvas.height - monsterImage.height / 4));
+          let randomDirection = Math.floor(Math.random() * 4);
+          let randomSpeed = Math.floor(Math.random() * 3) + 1;
+          let randomDelay = Math.floor(Math.random() * 10) + 1; // random delay between 1-10 frames
+
+          monsters.push(new Monster(randomX, randomY, randomDirection, randomSpeed / 4, randomDelay));
+        }
+
+
+        let frameTimer = 0;
+        let frameDelay = 6; // adjust this value to change the frame rate
+
+        // Define the update function
+        function update() {
+          // Clear the canvas
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          // Update and draw each monster
+          for (let i = 0; i < monsters.length; i++) {
+            monsters[i].update();
+            monsters[i].draw();
+          }
+
+          // Draw the character
+          ctx.imageSmoothingEnabled = false; // Turn off image smoothing
+          ctx.drawImage(characterImage,
+            frameIndex * frameWidth,
+            direction * frameHeight,
+            frameWidth, frameHeight,
+            characterX, characterY, frameWidth, frameHeight);
+
+          frameTimer += 1;
+          if (frameTimer >= frameDelay) {
+            frameTimer = 0;
+            frameIndex = (frameIndex + 1) % 4;
+          }
+          // Request the next frame
+          requestAnimationFrame(update);
+        }
+
+        // Start the game loop
+        update();
+      };
+    };
+  </script>
+</body>
+
+</html>

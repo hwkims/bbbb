@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>4-Directional Character Game</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+    }
+
+    .no-drag-select {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+
+    .no-drag-select::selection {
+      background: transparent;
+    }
+
+    #game-container {
+      width: 1920px;
+      height: 1080px;
+
+    }
+
+    #game-canvas {
+      width: 100%;
+      height: 100%;
+      background: url(map.png);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="game-container">
+    <canvas id="game-canvas" width="1920" height="1080"></canvas>
+  </div>
+  </div>
+
+  <script>
+
+
+    let canvas = document.getElementById('game-canvas');
+    let ctx = canvas.getContext('2d');
+
+    let characterImage = new Image();
+    characterImage.src = 'character.png';
+
+    let monsterImage = new Image();
+monsterImage.src = 'mon.png';
+
+let effectImage = new Image();
+effectImage.src = 'effect.png';
+
+let attackSound = new Audio('attack.wav');
+attackSound.preload = 'auto';
+
+
+    characterImage.onload = function () {
+      // Initialize the game state
+      let characterWidth = characterImage.width;
+      let characterHeight = characterImage.height;
+      let characterFrames = 16;
+      let frameWidth = characterWidth / 4;
+      let frameHeight = characterHeight / 4;
+
+      let frameIndex = 0;
+      let direction = 0;
+
+      let score = 0;
+      let level = 1;
+
+
+
+      let mouseX = 0;
+      let mouseY = 0;
+      let characterX = canvas.width / 2;
+      let characterY = canvas.height / 2;
+
+      document.addEventListener('contextmenu', event => {
+  event.preventDefault();
+  // Add your custom functionality here
+  console.log('Right-click detected!');
+});
+
+document.addEventListener('wheel', event => {
+  event.preventDefault();
+  console.log('Mouse wheel detected!');
+  if (event.deltaY > 0) {
+    console.log('Scrolling down');
+  } else {
+    console.log('Scrolling up');
+  }
+  // Add your custom functionality here
+});
+      document.addEventListener('mousemove', (event) => {
+        mouseX = event.clientX;
+        mouseY = event.clientY;
+      });
+
+      function handleMove() {
+        // Calculate the distance between the character and the mouse
+        let dx = characterX - mouseX;
+        let dy = characterY - mouseY;
+        let distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Calculate the angle between the character and the mouse
+        let angle = Math.atan2(dy, dx);
+        angle = (angle + Math.PI) % (2 * Math.PI);
+        // Ensure the angle is always positive
+
+        // Calculate the direction based on the angle
+        if (angle >= 0 && angle < Math.PI / 4) {
+          direction = 2;
+        } else if (angle >= Math.PI / 4 && angle < 3 * Math.PI / 4) {
+          direction = 0;
+        } else if (angle >= 3 * Math.PI / 4 && angle < 5 * Math.PI / 4) {
+          direction = 1;
+        } else {
+          direction = 3;
+        }
+        let targetX = mouseX;
+        let targetY = mouseY;
+
+        // Lerp the character's position towards the target position
+        characterX += (targetX - characterX) * 0.001;
+        characterY += (targetY - characterY) * 0.001;
+
+        // Keep the character within the canvas bounds
+        characterX = Math.max(0, Math.min(characterX, canvas.width - frameWidth));
+        characterY = Math.max(0, Math.min(characterY, canvas.height - frameHeight));
+      }
+      // Load the monster sprite sheet
+      let monsterImage = new Image();
+      monsterImage.src = 'mon.png';
+      monsterImage.onload = function () {
+        // Define the Monster constructor
+        function Monster(x, y, direction, speed) {
+          this.x = x;
+          this.y = y;
+          this.direction = direction;
+          this.speed = speed;
+          this.frameIndex = 0;
+          this.frameWidth = monsterImage.width / 4;
+          this.frameHeight = monsterImage.height / 4;
+          this.timer = 0; // add a timer property
+          this.changeDirectionTimer = 0; // add a timer for changing direction
+        }
+
+        // Add Monster properties and methods
+        Monster.prototype.update = function () {
+          // Update the monster's direction and position
+          switch (this.direction) {
+            case 0: // Down
+              this.y += this.speed;
+              break;
+            case 1: // Left
+              this.x -= this.speed;
+              break;
+            case 2: // Right
+              this.x += this.speed;
+              break;
+            case 3: // Up
+              this.y -= this.speed;
+              break;
+          }
+
+          // Keep the monster within the canvas bounds
+          this.x = Math.max(0, Math.min(this.x, canvas.width - this.frameWidth));
+          this.y = Math.max(0, Math.min(this.y, canvas.height - this.frameHeight));
+
+          // Update the timer
+          this.timer += 1 / 60; // increment the timer by 1/60th of a second
+
+          // Change direction randomly every second
+          this.changeDirectionTimer += 1 / 60; // increment the timer by 1/60th of a second
+          if (this.changeDirectionTimer >= 1) {
+            this.changeDirectionTimer = 0;
+            let randomDirection = Math.floor(Math.random() * 4);
+            this.direction = randomDirection; // set direction to 0-3
+          }
+
+          // If staying still, don't move
+          if (this.direction === -1) {
+            this.x = this.x;
+            this.y = this.y;
+          }
+          // Update the frame index
+          this.timer += 1 / 60; // increment the timer by 1/60th of a second
+          if (this.timer >= 1) {
+            this.timer = 0;
+            this.frameIndex = (this.frameIndex + 1) % 4;
+          }
+        };
+
+        Monster.prototype.draw = function () {
+          // Draw the monster
+          ctx.drawImage(monsterImage,
+            this.frameIndex * this.frameWidth,
+            this.direction * this.frameHeight,
+            this.frameWidth, this.frameHeight,
+            this.x, this.y, this.frameWidth, this.frameHeight);
+
+
+
+        };
+
+
+
+
+
+
+        // Create an array of monsters
+        let monsters = [];
+
+        // Spawn 5 monsters at random positions
+        for (let i = 0; i < 59; i++) {
+          let randomX = Math.floor(Math.random() * (canvas.width - monsterImage.width / 4));
+          let randomY = Math.floor(Math.random() * (canvas.height - monsterImage.height / 4));
+          let randomDirection = Math.floor(Math.random() * 4);
+          let randomSpeed = Math.floor(Math.random() * 3) + 1;
+          let randomDelay = Math.floor(Math.random() * 10) + 1; // random delay between 1-10 frames
+
+          monsters.push(new Monster(randomX, randomY, randomDirection, randomSpeed / 4, randomDelay));
+        }
+
+
+        let frameTimer = 0;
+        let frameDelay = 6; // adjust this value to change the frame rate
+
+
+
+
+        let effectImage = new Image();
+effectImage.src = 'effect.png';
+effectImage.onload = function() {
+  function AttackEffect(x, y) {
+    this.x = x;
+    this.y = y;
+    this.spriteSheet = effectImage;
+    this.frameIndex = 0;
+    this.frameWidth = this.spriteSheet.width / 5;
+    this.frameHeight = this.spriteSheet.height / 9;
+    this.animationTimer = 0;
+  }
+  AttackEffect.prototype.update = function() {
+    this.animationTimer += 1 / 60;
+    if (this.animationTimer >= 0.1) {
+      this.animationTimer = 0;
+      this.frameIndex = (this.frameIndex + 1) % 45;
+    }
+  };
+  AttackEffect.prototype.draw = function() {
+    ctx.drawImage(this.spriteSheet,
+      (this.frameIndex % 5) * this.frameWidth,
+      Math.floor(this.frameIndex / 5) * this.frameHeight,
+      this.frameWidth, this.frameHeight,
+      this.x, this.y, this.frameWidth, this.frameHeight);
+  };
+
+  let attackEffects = [];
+
+setInterval(function() {
+  attackEffects.push(new AttackEffect(characterX, characterY));
+  attackSound.play(); // Play the attack sound
+}, 3000);
+
+// Define the update function
+function update() {
+  // Clear the canvas
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Update and draw each monster
+  for (let i = 0; i < monsters.length; i++) {
+    monsters[i].update();
+    monsters[i].draw();
+  }
+
+  // Update the character position
+  handleMove();
+
+  // Draw the character
+  ctx.imageSmoothingEnabled = false; // Turn off image smoothing
+  ctx.drawImage(characterImage,
+    frameIndex * frameWidth,
+    direction * frameHeight,
+    frameWidth, frameHeight,
+    characterX, characterY, frameWidth, frameHeight);
+
+  // Update and draw each attack effect
+  for (let i = 0; i < attackEffects.length; i++) {
+    attackEffects[i].update();
+    attackEffects[i].draw();
+    
+    // Check for collision with monsters
+    for (let j = 0; j < monsters.length; j++) {
+      if (checkCollision(attackEffects[i].x, attackEffects[i].y, attackEffects[i].frameWidth, attackEffects[i].frameHeight, monsters[j].x, monsters[j].y, monsters[j].frameWidth, monsters[j].frameHeight)) {
+        // Remove the monster if it collides with the attack effect
+        monsters.splice(j, 1);
+        j--;
+      }
+    }
+    
+    // Remove the attack effect if its animation is complete
+    if (attackEffects[i].frameIndex >= 44) {
+      attackEffects.splice(i, 1);
+      i--;
+    }
+  }
+
+  frameTimer += 1;
+  if (frameTimer >= frameDelay) {
+    frameTimer = 0;
+    frameIndex = (frameIndex + 1) % 4;
+  }
+
+  // Request the next frame
+  requestAnimationFrame(update);
+}
+
+
+  // Update and draw each attack effect
+for (let i = 0; i < attackEffects.length; i++) {
+  attackEffects[i].update();
+  attackEffects[i].draw();
+  
+  // Check for collision with monsters
+  for (let j = 0; j < monsters.length; j++) {
+    if (checkCollision(attackEffects[i].x, attackEffects[i].y, attackEffects[i].frameWidth, attackEffects[i].frameHeight, monsters[j].x, monsters[j].y, monsters[j].frameWidth, monsters[j].frameHeight)) {
+      // Remove the monster if it collides with the attack effect
+      monsters.splice(j, 1);
+      j--;
+    }
+  }
+  
+  // Remove the attack effect if its animation is complete
+  if (attackEffects[i].frameIndex >= 44) {
+    attackEffects.splice(i, 1);
+    i--;
+  }
+}
+
+// ...
+
+function checkCollision(ax, ay, aw, ah, mx, my, mw, mh) {
+  if (ax + aw > mx && ax < mx + mw && ay + ah > my && ay < my + mh) {
+    return true;
+  } else {
+    return false;
+  }
+
+  }
+};
+
+        // Define the update function
+        function update() {
+          // Clear the canvas
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          // Update and draw each monster
+          for (let i = 0; i < monsters.length; i++) {
+            monsters[i].update();
+            monsters[i].draw();
+          }
+
+          // Update the character position
+          handleMove();
+
+  
+          // Draw the character
+          ctx.imageSmoothingEnabled = false; // Turn off image smoothing
+          ctx.drawImage(characterImage,
+            frameIndex * frameWidth,
+            direction * frameHeight,
+            frameWidth, frameHeight,
+            characterX, characterY, frameWidth, frameHeight);
+
+          frameTimer += 1;
+          if (frameTimer >= frameDelay) {
+            frameTimer = 0;
+            frameIndex = (frameIndex + 1) % 4;
+          }
+
+          // Request the next frame
+          requestAnimationFrame(update);
+        }
+        function checkCollision(attackEffect, monster) {
+  let ax = attackEffect.x;
+  let ay = attackEffect.y;
+  let aw = attackEffect.frameWidth;
+  let ah = attackEffect.frameHeight;
+  
+  let mx = monster.x;
+  let my = monster.y;
+  let mw = monster.frameWidth;
+  let mh = monster.frameHeight;
+  
+  if (ax + aw > mx && ax < mx + mw && ay + ah > my && ay < my + mh) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+        // Start the game loop
+        update();
+      };
+    };
+  </script>
+</body>
+
+</html>
